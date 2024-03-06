@@ -76,7 +76,7 @@ cmake_dependent_option( OSQP_COVERAGE_CHECK
 
 set(OSQP_ALGEBRA_BACKEND
     "builtin"
-    CACHE STRING "The Algebra to use (builtin/mkl/cuda)")
+    CACHE STRING "The Algebra to use (builtin/mkl/cuda/opencl)")
 
 option(OSQP_ENABLE_PRINTING "Enable solver printing" ON)
 option(OSQP_ENABLE_PROFILING "Enable solver profiling (timing)" ON)
@@ -97,6 +97,8 @@ elseif(${OSQP_ALGEBRA_BACKEND} STREQUAL "mkl")
   set(OSQP_ALGEBRA_MKL ON)
 elseif(${OSQP_ALGEBRA_BACKEND} STREQUAL "cuda")
   set(OSQP_ALGEBRA_CUDA ON)
+  elseif(${OSQP_ALGEBRA_BACKEND} STREQUAL "opencl")
+  set(OSQP_ALGEBRA_OPENCL ON)
 endif()
 
 # Is the code generated for embedded platforms? 1 :   Yes. Matrix update not allowed. 2 :   No. Matrix update allowed.
@@ -109,6 +111,7 @@ if(DEFINED OSQP_EMBEDDED_MODE)
   set(OSQP_ALGEBRA_BUILTIN ON)
   unset(OSQP_ALGEBRA_CUDA)
   unset(OSQP_ALGEBRA_MKL)
+  unset(OSQP_ALGEBRA_OPENCL)
 
   if(OSQP_ENABLE_PRINTING AND NOT OSQP_CUSTOM_PRINTING)
     message(WARNING "Disabling printing in OSQP_EMBEDDED_MODE mode.")
@@ -153,7 +156,7 @@ message(STATUS "Solver profiling: ${OSQP_ENABLE_PROFILING}")
 # Display final interrupt behaviour
 message(STATUS "Solver interrupt: ${OSQP_ENABLE_INTERRUPT}")
 
-if(OSQP_ALGEBRA_CUDA)
+if(OSQP_ALGEBRA_CUDA OR OSQP_ALGEBRA_OPENCL)
   # Some options have different defaults for the CUDA algebra
   option(OSQP_USE_FLOAT "Use floats instead of doubles" ON)
   option(OSQP_USE_LONG "Use long integers (64bit) for indexing" OFF)
@@ -242,6 +245,11 @@ if(OSQP_ALGEBRA_CUDA)
     set(CMAKE_CUDA_ARCHITECTURES 60 75)
     # set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --gpu-architecture=compute_60 --gpu-code=sm_60,sm_75")
   endif()
+endif()
+
+# OpenCL
+if(OSQP_ALGEBRA_OPENCL)
+  find_package(OpenCL)
 endif()
 
 

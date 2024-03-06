@@ -14,6 +14,7 @@
 #cmakedefine OSQP_ALGEBRA_BUILTIN
 #cmakedefine OSQP_ALGEBRA_MKL
 #cmakedefine OSQP_ALGEBRA_CUDA
+#cmakedefine OSQP_ALGEBRA_OPENCL
 
 /* Enable code generation */
 #cmakedefine OSQP_CODEGEN
