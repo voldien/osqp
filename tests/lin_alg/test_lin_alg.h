@@ -12,7 +12,7 @@
 #include "lin_alg.h"
 #include "util.h"
 
-#ifndef OSQP_ALGEBRA_CUDA
+#if !defined(OSQP_ALGEBRA_CUDA) && !defined(OSQP_ALGEBRA_OPENCL)
 #include "csc_utils.h"
 #endif
 

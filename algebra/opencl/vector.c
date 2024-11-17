@@ -233,12 +233,20 @@ OSQPVectorf *OSQPVectorf_view(const OSQPVectorf *a, OSQPInt head,
 
   OSQPVectorf *view = (OSQPVectorf *)c_malloc(sizeof(OSQPVectorf));
   if (view) {
-    view->length = length;
-    view->d_val = a->d_val + head;
 
     const cl_buffer_region region = {head, length};
-    cl_allocate_sub_mem(a->cl_vec, CL_MEM_READ_WRITE, 1, &region,
-                        &view->cl_vec);
+
+    if (region.origin % handle->deviceInformations[0].alignedSize == 0) {
+
+      cl_allocate_sub_mem(a->cl_vec, CL_MEM_READ_WRITE | CL_MEM_USE_HOST_PTR, 1,
+                          &region, &view->cl_vec);
+    } else {
+      view->length = length;
+      view->cl_vec = a->cl_vec;
+      clRetainMemObject(view->cl_vec);
+    }
+
+    view->d_val = cl_host_map(view->cl_vec, CL_MAP_READ, &region);
   }
   return view;
 }
@@ -268,7 +276,7 @@ void OSQPVectori_from_raw(OSQPVectori *b, const OSQPInt *av) {
 
 void OSQPVectorf_to_raw(OSQPFloat *bv, const OSQPVectorf *a) {
 
-  cl_vec_copy_d2h(bv, a->d_val, a->length);
+  cl_vec_copy_d2h(bv, a->cl_vec, a->length);
 }
 
 void OSQPVectori_to_raw(OSQPInt *bv, const OSQPVectori *a) {

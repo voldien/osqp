@@ -27,10 +27,9 @@
 
 extern OpenCL_Handle_t *handle;
 
-void scatter(OSQPFloat *out, const OSQPFloat *in, const OSQPInt *ind,
-             OSQPInt n) {
+void scatter(cl_mem out, const cl_mem in, const cl_mem ind, OSQPInt n) {
 
-  int err;
+  cl_int err;
   const cl_kernel kernel = handle->scatter_kernel;
 
   /*  */
@@ -39,10 +38,12 @@ void scatter(OSQPFloat *out, const OSQPFloat *in, const OSQPInt *ind,
   err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &ind);
   err = clSetKernelArg(kernel, 3, sizeof(n), &n);
 
-  size_t workgroup[1] = {(n / 64) + 1};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1,
-                               NULL /*&localworksize[0]*/, &workgroup[0], 0, 0,
-                               0, 0);
+  size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
+                         1};
+  size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
+
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 /*******************************************************************************
@@ -93,25 +94,14 @@ void cl_vec_copy_h2d(cl_mem d_y, const OSQPFloat *h_x, OSQPInt n) {
 }
 
 void cl_vec_copy_d2h(OSQPFloat *h_y, const cl_mem d_x, OSQPInt n) {
-
-  cl_int err;
-  memcpy(h_y, d_x, n * sizeof(OSQPFloat));
-  return;
-  int *ptr =
-      (int *)clEnqueueMapBuffer(handle->queue, d_x, CL_TRUE, CL_MAP_WRITE, 0,
-                                n * sizeof(OSQPFloat), 0, NULL, NULL, &err);
-  int i;
-  memcpy(h_y, ptr, n * sizeof(OSQPFloat));
-  err = clEnqueueUnmapMemObject(handle->queue, d_x, ptr, 0, NULL, NULL);
+  cl_memcpy_d2h(h_y, d_x, n * sizeof(OSQPFloat));
 }
 
 void cl_vec_int_copy_h2d(cl_mem d_y, const OSQPInt *h_x, OSQPInt n) {
-
   cl_memcpy_h2d(d_y, h_x, n * sizeof(OSQPInt));
 }
 
 void cl_vec_int_copy_d2h(OSQPInt *h_y, const cl_mem d_x, OSQPInt n) {
-
   cl_memcpy_d2h(h_y, d_x, n * sizeof(OSQPInt));
 }
 
@@ -127,9 +117,8 @@ void cl_vec_set_sc(cl_mem d_a, OSQPFloat sc, OSQPInt n) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1,
-                               NULL /*&localworksize[0]*/, &workgroup[0], 0, 0,
-                               0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_set_sc_cond(cl_mem d_a, const cl_mem d_test, OSQPFloat sc_if_neg,
@@ -146,10 +135,12 @@ void cl_vec_set_sc_cond(cl_mem d_a, const cl_mem d_test, OSQPFloat sc_if_neg,
   err = clSetKernelArg(kernel, 4, sizeof(sc_if_pos), &sc_if_pos);
   err = clSetKernelArg(kernel, 5, sizeof(n), &n);
 
-  size_t workgroup[1] = {(n / 64) + 1};
-  err = clEnqueueNDRangeKernel(handle->queue, handle->vec_set_sc_cond_kernel, 1,
-                               NULL /*&localworksize[0]*/, &workgroup[0], 0, 0,
-                               0, 0);
+  size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
+                         1};
+  size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
+
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_mult_sc(cl_mem d_a, OSQPFloat sc, OSQPInt n) {
@@ -164,8 +155,8 @@ void cl_vec_mult_sc(cl_mem d_a, OSQPFloat sc, OSQPInt n) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_add_scaled(cl_mem d_x, const cl_mem d_a, const cl_mem d_b,
@@ -184,9 +175,9 @@ void cl_vec_add_scaled(cl_mem d_x, const cl_mem d_a, const cl_mem d_b,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
 
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
   // TODO: optimize based on scaler.
 }
 
@@ -209,9 +200,8 @@ void cl_vec_add_scaled3(cl_mem d_x, const cl_mem d_a, const cl_mem d_b,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
-
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
   // TODO: optimize based on scaler.
 }
 
@@ -231,9 +221,8 @@ void cl_vec_norm_inf(const cl_mem d_x, OSQPInt n, OSQPFloat *h_res) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
-
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
   cl_memcpy_d2h(h_res, tmp, sizeof(*h_res));
   cl_free(tmp);
 }
@@ -281,7 +270,8 @@ void cl_vec_norm_1(const cl_mem d_x, OSQPInt n, OSQPFloat *h_res) {
       cl_allocate_mem(handle->context, CL_MEM_READ_ONLY | CL_MEM_HOST_READ_ONLY,
                       sizeof(OSQPFloat));
 
-  const cl_kernel kernel = handle->vec_sum_kernel;
+  const cl_kernel kernel = handle->vec_norm_1_kernel;
+
   cl_int err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_x); /**/
 
   err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &tmp); /**/
@@ -291,8 +281,8 @@ void cl_vec_norm_1(const cl_mem d_x, OSQPInt n, OSQPFloat *h_res) {
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
 
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, &local[0],
-                               &workgroup[0], 0, 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   cl_memcpy_d2h(h_res, tmp, sizeof(OSQPFloat));
   cl_free(tmp);
@@ -316,9 +306,8 @@ void cl_vec_prod(const cl_mem d_a, const cl_mem d_b, OSQPInt n,
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
 
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1,
-                               NULL /*&localworksize[0]*/, &workgroup[0], 0, 0,
-                               0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, &local[0],
+                               &workgroup[0], 0, 0, 0, 0);
 
   cl_memcpy_d2h(h_res, tmp, sizeof(OSQPFloat));
   cl_free(tmp);
@@ -351,9 +340,8 @@ void cl_vec_prod_signed(const cl_mem d_a, const cl_mem d_b, OSQPInt sign,
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
 
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1,
-                               NULL /*&localworksize[0]*/, &workgroup[0], 0, 0,
-                               0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   cl_memcpy_d2h(h_res, tmp, sizeof(OSQPFloat));
   cl_free(tmp);
@@ -373,9 +361,8 @@ void cl_vec_ew_prod(cl_mem d_c, const cl_mem d_a, const cl_mem d_b, OSQPInt n) {
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
 
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1,
-                               NULL /*&localworksize[0]*/, &workgroup[0], 0, 0,
-                               0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_eq(const cl_mem a, const cl_mem b, OSQPFloat tol, OSQPInt n,
@@ -397,8 +384,8 @@ void cl_vec_eq(const cl_mem a, const cl_mem b, OSQPFloat tol, OSQPInt n,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   cl_memcpy_d2h(h_res, tmp, sizeof(*h_res));
   cl_free(tmp);
@@ -422,8 +409,8 @@ void cl_vec_leq(const cl_mem d_l, const cl_mem d_u, OSQPInt n, OSQPInt *h_res) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   cl_memcpy_d2h(h_res, tmp, sizeof(*h_res));
   cl_free(tmp);
@@ -446,8 +433,8 @@ void cl_vec_bound(cl_mem d_x, const cl_mem d_z, const cl_mem d_l,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_project_polar_reccone(cl_mem d_y, const cl_mem d_l,
@@ -466,8 +453,8 @@ void cl_vec_project_polar_reccone(cl_mem d_y, const cl_mem d_l,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_in_reccone(const cl_mem d_y, const cl_mem d_l, const cl_mem d_u,
@@ -491,8 +478,8 @@ void cl_vec_in_reccone(const cl_mem d_y, const cl_mem d_l, const cl_mem d_u,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   cl_memcpy_d2h(h_res, tmp, sizeof(*h_res));
   cl_free(tmp);
@@ -511,8 +498,8 @@ void cl_vec_reciprocal(cl_mem d_b, const cl_mem d_a, OSQPInt n) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_sqrt(cl_mem d_a, OSQPInt n) {
@@ -525,8 +512,8 @@ void cl_vec_sqrt(cl_mem d_a, OSQPInt n) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_max(cl_mem d_c, const cl_mem d_a, const cl_mem d_b, OSQPInt n) {
@@ -542,8 +529,8 @@ void cl_vec_max(cl_mem d_c, const cl_mem d_a, const cl_mem d_b, OSQPInt n) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_min(cl_mem d_c, const cl_mem d_a, const cl_mem d_b, OSQPInt n) {
@@ -559,8 +546,8 @@ void cl_vec_min(cl_mem d_c, const cl_mem d_a, const cl_mem d_b, OSQPInt n) {
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_bounds_type(cl_mem d_iseq, const cl_mem d_l, const cl_mem d_u,
@@ -585,8 +572,8 @@ void cl_vec_bounds_type(cl_mem d_iseq, const cl_mem d_l, const cl_mem d_u,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   cl_memcpy_d2h(h_has_changed, tmp, sizeof(*h_has_changed));
   cl_free(tmp);
@@ -606,8 +593,8 @@ void cl_vec_set_sc_if_lt(cl_mem d_x, const cl_mem d_z, OSQPFloat testval,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
 void cl_vec_set_sc_if_gt(cl_mem d_x, const cl_mem d_z, OSQPFloat testval,
@@ -624,14 +611,29 @@ void cl_vec_set_sc_if_gt(cl_mem d_x, const cl_mem d_z, OSQPFloat testval,
   size_t workgroup[1] = {(n / handle->deviceInformations[0].localworksize[0]) +
                          1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 }
 
-void cl_vec_gather(OSQPInt nnz, const OSQPFloat *d_y, OSQPFloat *d_xVal,
-                   const OSQPInt *d_xInd) {
+void cl_vec_gather(OSQPInt nnz, const cl_mem d_y, cl_mem d_xVal,
+                   const cl_mem d_xInd) {
+  {
+    cl_int err;
+    const cl_kernel kernel = handle->vec_gather_kernel;
 
-  // TODO: impl
+    /*  */
+    err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_xVal); /**/
+    err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &d_y);
+    err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &d_xInd);
+    err = clSetKernelArg(kernel, 3, sizeof(nnz), &nnz);
+
+    size_t workgroup[1] = {
+        (nnz / handle->deviceInformations[0].localworksize[0]) + 1};
+    size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
+
+    err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                                 &local[0], 0, 0, 0);
+  }
 }
 
 void cl_mat_mult_sc(csr *S, csr *At, OSQPFloat sc) {
@@ -659,8 +661,8 @@ void cl_mat_lmult_diag(csr *S, csr *At, const cl_mem d_diag) {
   size_t workgroup[1] = {
       (nnz / handle->deviceInformations[0].localworksize[0]) / 8 + 1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   if (At) {
     //   /* Multiply At from right */
@@ -673,14 +675,13 @@ void cl_mat_lmult_diag(csr *S, csr *At, const cl_mem d_diag) {
     size_t workgroup[1] = {
         (nnz / handle->deviceInformations[0].localworksize[0]) + 1};
     size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-    err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                                 &workgroup[0], 0, 0, 0);
+    err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                                 &local[0], 0, 0, 0);
   }
 }
 
 void cl_mat_rmult_diag(csr *S, csr *At, const cl_mem d_diag) {
 
-  return;
   // TODO: Impl
   const OSQPInt nnz = S->nnz;
 
@@ -695,8 +696,8 @@ void cl_mat_rmult_diag(csr *S, csr *At, const cl_mem d_diag) {
   size_t workgroup[1] = {
       (nnz / handle->deviceInformations[0].localworksize[0]) / 8 + 1};
   size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                               &workgroup[0], 0, 0, 0);
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
 
   if (At) {
     //   /* Multiply At from right */
@@ -709,13 +710,14 @@ void cl_mat_rmult_diag(csr *S, csr *At, const cl_mem d_diag) {
     size_t workgroup[1] = {
         (nnz / handle->deviceInformations[0].localworksize[0]) + 1};
     size_t local[1] = {handle->deviceInformations[0].localworksize[0]};
-    err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &local[0],
-                                 &workgroup[0], 0, 0, 0);
+
+    err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                                 &local[0], 0, 0, 0);
   }
 }
 
 void cl_mat_rmult_diag_new(const csr *S, cl_mem d_buffer, const cl_mem d_diag) {
-  return;
+
   const OSQPInt nnz = S->nnz;
   // TODO: Impl
 
@@ -738,43 +740,94 @@ void cl_mat_rmult_diag_new(const csr *S, cl_mem d_buffer, const cl_mem d_diag) {
 void cl_mat_Axpy(const csr *A, const OSQPVectorf *vecx, OSQPVectorf *vecy,
                  OSQPFloat alpha, OSQPFloat beta) {
 
+  const cl_kernel kernel = handle->Axpy_mat_kernel;
+  /*  */
   cl_int err;
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 0, sizeof(cl_mem),
-                       &A->mainbuffer); /**/
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 1, sizeof(cl_mem),
-                       &vecx->cl_vec); /**/
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 2, sizeof(cl_mem),
-                       &vecy->cl_vec); /**/
+  err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &A->mainbuffer); /**/
+  err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &vecx->cl_vec);  /**/
+  err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &vecy->cl_vec);  /**/
+  /*  */
+  err = clSetKernelArg(kernel, 3, sizeof(alpha), &alpha);
+  err = clSetKernelArg(kernel, 4, sizeof(beta), &beta);
+  err = clSetKernelArg(kernel, 5, sizeof(OSQPInt), &A->n);
+  err = clSetKernelArg(kernel, 6, sizeof(OSQPInt), &A->m);
 
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 3, sizeof(alpha), &alpha);
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 4, sizeof(beta), &beta);
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 5, sizeof(OSQPInt), &A->n);
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 6, sizeof(OSQPInt), &A->m);
-
-  cl_mem tmp = cl_allocate_mem(handle->context, CL_MEM_WRITE_ONLY,
-                               (A->m) * (vecy->length) * sizeof(OSQPFloat));
-  err = clSetKernelArg(handle->Axpy_mat_kernel, 7, sizeof(cl_mem), &tmp);
+  cl_mem tmp_result =
+      cl_allocate_mem(handle->context, CL_MEM_WRITE_ONLY,
+                      (A->m) * (vecy->length) * sizeof(OSQPFloat));
+  err = clSetKernelArg(kernel, 7, sizeof(cl_mem), &tmp_result);
 
   size_t workgroup[2] = {
       ((A->m) / handle->deviceInformations[0].localworksize[0]) + 1,
-      ((vecy->length) / handle->deviceInformations[0].localworksize[1]) + 1};
+      ((vecy->length) / handle->deviceInformations[0].localworksize[0]) + 1};
   size_t local[2] = {A->m, vecy->length};
 
-  err = clEnqueueNDRangeKernel(handle->queue, handle->Axpy_mat_kernel, 2, NULL,
-                               &local[0], &workgroup[0], 0, 0, 0);
-
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
   clFlush(handle->queue);
-  cl_memcpy_d2d(vecy->cl_vec, tmp, vecy->length * sizeof(OSQPFloat));
-  cl_free(tmp);
+  cl_memcpy_d2d(vecy->cl_vec, tmp_result, vecy->length * sizeof(OSQPFloat));
+  cl_free(tmp_result);
 }
 
-void cl_mat_row_norm_inf(const csr *S, OSQPFloat *d_res) {
+static void Segmented_reduce(const cl_mem key_start, OSQPInt number_of_keys,
+                             OSQPInt num_segments, const cl_mem values,
+                             void *buffer, cl_mem result, int binary_op) {
 
-  OSQPInt nnz = S->nnz;
-  OSQPInt num_rows = S->m;
+  OSQPInt num_nnz_rows;
+
+  /*  Memory layout of buffer:
+   *  [ m*sizeof(OSQPFloat) Bytes | m*sizeof(OSQPInt) Bytes]
+   *  where m = "number of rows"
+   */
+  cl_mem intermediate_result = buffer;
+  // OSQPInt *nnz_rows = (OSQPInt *)(&intermediate_result[num_segments]);
+
+  // thrust::pair<OSQPInt *, OSQPFloat *> new_end;
+  // thrust::equal_to<OSQPInt> binary_pred;
+  //
+  // new_end = thrust::reduce_by_key(thrust::device, key_start,
+  //                                key_start + number_of_keys, values,
+  //                                nnz_rows, intermediate_result, binary_pred,
+  //                                binary_op);
+
+  // num_nnz_rows = new_end.first - nnz_rows;
+  cl_memset(result, 0, 0, num_segments * sizeof(OSQPFloat));
+
+  // scatter(result, intermediate_result, nnz_rows, num_nnz_rows);
+}
+
+void cl_mat_row_norm_inf(const csr *S, cl_mem d_res) {
+
+  const OSQPInt nnz = S->nnz;
+  const OSQPInt num_rows = S->m;
 
   if (nnz == 0) {
     return;
   }
-  // TODO: Impl
+
+  // abs_maximum<OSQPFloat> binary_op;
+  void *d_buffer;
+  d_buffer = cl_allocate_mem(handle->context, CL_MEM_READ_WRITE,
+                             num_rows * (sizeof(OSQPFloat) + sizeof(OSQPInt)));
+
+  /*
+   *  For rows with only one element, the element itself is returned.
+   *  Therefore, we have to take the absolute value to get the inf-norm.
+   */
+  Segmented_reduce(S->cl_row_ind, nnz, num_rows, S->cl_val, d_buffer, d_res, 0);
+
+  const cl_kernel kernel = handle->vec_abs_kernel;
+  /*  */
+  cl_int err;
+  err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &d_res);    /**/
+  err = clSetKernelArg(kernel, 1, sizeof(cl_mem), &num_rows); /**/
+
+  size_t workgroup[2] = {
+      (num_rows / handle->deviceInformations[0].localworksize[0]) + 1};
+  size_t local[2] = {num_rows};
+
+  err = clEnqueueNDRangeKernel(handle->queue, kernel, 1, NULL, &workgroup[0],
+                               &local[0], 0, 0, 0);
+
+  cl_free(d_buffer);
 }

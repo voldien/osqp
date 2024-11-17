@@ -193,8 +193,8 @@ void cl_vec_set_sc_if_lt(cl_mem d_x, const cl_mem d_z, OSQPFloat testval,
 void cl_vec_set_sc_if_gt(cl_mem d_x, const cl_mem d_z, OSQPFloat testval,
                          OSQPFloat newval, OSQPInt n);
 
-void cl_vec_gather(OSQPInt nnz, const OSQPFloat *d_y, OSQPFloat *d_xVal,
-                   const OSQPInt *d_xInd);
+void cl_vec_gather(OSQPInt nnz, const cl_mem d_y, cl_mem d_xVal,
+                   const cl_mem d_xInd);
 
 /*******************************************************************************
  *                           Matrix Functions                                  *
@@ -230,6 +230,6 @@ void cl_mat_Axpy(const csr *A, const OSQPVectorf *vecx, OSQPVectorf *vecy,
 /**
  * d_res[i] = |S_i|_inf where S_i is i-th row of S
  */
-void cl_mat_row_norm_inf(const csr *S, OSQPFloat *d_res);
+void cl_mat_row_norm_inf(const csr *S, cl_mem d_res);
 
 #endif

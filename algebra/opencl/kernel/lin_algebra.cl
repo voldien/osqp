@@ -18,14 +18,14 @@ typedef double OSQPFloat;
 #endif
 
 #ifdef OSQP_USE_FLOAT
-typedef long OSQPInt;
+typedef int OSQPInt;
 #else
 typedef int OSQPInt;
 #endif
 
 __kernel void vec_norm_inf_kernel(__global const OSQPFloat *A,
                                   __global OSQPFloat *result, const OSQPInt n) {
-  __local OSQPFloat a[128];
+  __local OSQPFloat a[32];
 
   // size_t warp_size = 32;
   const size_t sub_group_size = get_sub_group_size();
@@ -83,8 +83,8 @@ __kernel void Axpy_mat_kernel(__global const OSQPFloat *A,
 }
 
 // [OpenCL 2.0 or greater] or support subgroup extension
-__kernel void vec_sum_kernel(__constant const OSQPFloat *arr,
-                             __global OSQPFloat *sum, OSQPInt n) {
+__kernel void vec_norm_1_kernel(__constant const OSQPFloat *arr,
+                                __global OSQPFloat *sum, OSQPInt n) {
   __local OSQPFloat a[32];
 
   // size_t warp_size = 32;
@@ -99,7 +99,7 @@ __kernel void vec_sum_kernel(__constant const OSQPFloat *arr,
   OSQPFloat updates0 = 0.0;
 
   for (size_t idx = local_id_0; idx < n; idx += local_size_0) {
-    updates0 += arr[idx];
+    updates0 += fabs(arr[idx]);
   }
 
   // printf("%i, %i, %f\n", sub_group_size, 0, updates0);
@@ -328,7 +328,7 @@ __kernel void vec_leq_kernel(__global const OSQPFloat *l,
   for (OSQPInt i = idx; i < n; i += grid_size) {
     if (l[i] > u[i]) {
       atomic_and((__global volatile uint *)&res[0], 0);
-      atomic_and((__global volatile uint *)&res[1], 0);
+    //  /atomic_and((__global volatile uint *)&res[1], 0);
     }
   }
 }
@@ -358,7 +358,7 @@ __kernel void vec_project_polar_reccone_kernel(__global OSQPFloat *y,
     if (u[i] > +infval) {
       if (l[i] < -infval) {
         /* Both bounds infinite */
-        y[i] = 0.0;
+        y[i] = (OSQPFloat)0.0;
       } else {
         /* Only upper bound infinite */
         y[i] = min(y[i], (OSQPFloat)0.0);
@@ -382,7 +382,7 @@ __kernel void vec_in_reccone_kernel(__global const OSQPFloat *y,
   for (OSQPInt i = idx; i < n; i += grid_size) {
     if ((u[i] < +infval && y[i] > +tol) || (l[i] > -infval && y[i] < -tol)) {
       atomic_and((__global volatile uint *)&res[0], 0);
-      atomic_and((__global volatile uint *)&res[1], 0);
+      //atomic_and((__global volatile uint *)&res[1], 0);
     }
   }
 }
@@ -445,19 +445,22 @@ __kernel void vec_bounds_type_kernel(__global OSQPInt *iseq,
       /* Equality constraints */
       if (iseq[i] != 1) {
         iseq[i] = 1;
-        atomic_or(has_changed, 1);
+        atomic_or((volatile __global uint *)&has_changed[0], 1);
+      //  atomic_or((volatile __global uint *)&has_changed[1], 1);
       }
     } else if ((l[i] < -infval) && (u[i] > infval)) {
       /* Loose bounds */
       if (iseq[i] != -1) {
         iseq[i] = -1;
-        atomic_or(has_changed, 1);
+        atomic_or((volatile __global uint *)&has_changed[0], 1);
+       // atomic_or((volatile __global uint *)&has_changed[1], 1);
       }
     } else {
       /* Inequality constraints */
       if (iseq[i] != 0) {
         iseq[i] = 0;
-        atomic_or(has_changed, 1);
+        atomic_or((volatile __global uint *)&has_changed[0], 1);
+      //  atomic_or((volatile __global uint *)&has_changed[1], 1);
       }
     }
   }
@@ -530,16 +533,12 @@ __kernel void mat_rmult_diag_new_kernel(__global const OSQPInt *col_ind,
   }
 }
 
-__kernel void vec_abs_kernel(__global OSQPFloat *a, const OSQPInt n) {
+__kernel void vec_abs_kernel(__global OSQPFloat *a, OSQPInt n) {
 
   OSQPInt i = get_local_id(0) + get_local_size(0) * get_group_id(0);
 
   if (i < n) {
-#ifdef OSQP_USE_FLOAT
     a[i] = fabs(a[i]);
-#else
-    a[i] = fabs(a[i]);
-#endif
   }
 }
 
@@ -553,6 +552,19 @@ __kernel void scatter_kernel(__global OSQPFloat *out,
   for (OSQPInt i = idx; i < n; i += grid_size) {
     OSQPInt j = ind[i];
     out[j] = in[i];
+  }
+}
+
+__kernel void gather_kernel(__global OSQPFloat *d_xVal,
+                            __global const OSQPFloat *d_y,
+                            __global const OSQPInt *d_xInd, OSQPInt n) {
+
+  OSQPInt idx = get_local_id(0) + get_local_size(0) * get_group_id(0);
+  OSQPInt grid_size = get_local_size(0) * get_num_groups(0);
+  
+  for (OSQPInt i = idx; i < n; i += grid_size) {
+    OSQPInt j = d_xInd[i];
+    d_xVal[j] = d_y[i];
   }
 }
 

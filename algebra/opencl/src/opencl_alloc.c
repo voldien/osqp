@@ -43,15 +43,17 @@ void cl_allocate_sub_mem(const cl_mem mem, const cl_mem_flags flag,
   }
 }
 
-void cl_free(cl_mem mem) { cl_int err = clReleaseMemObject(mem); }
+void cl_free(cl_mem mem) {
+  cl_int err = clReleaseMemObject(mem);
+  assert(err == CL_SUCCESS);
+}
 
 void cl_memcpy_h2d(const cl_mem mem_dst, const void *src, const size_t size) {
-  if (mem_dst) {
+  if (mem_dst && size > 0 && src) {
     cl_int err;
     err = clEnqueueWriteBuffer(handle->queue, mem_dst, CL_TRUE, 0, size, src, 0,
                                NULL, NULL);
     assert(err == CL_SUCCESS);
-    return;
   }
 }
 
@@ -62,11 +64,21 @@ void cl_memcpy_d2h(void *dst, const cl_mem mem_src, const size_t size) {
   assert(err == CL_SUCCESS);
 }
 
-void cl_memcpy_d2d(cl_mem mem_dst, const cl_mem mem_src, const size_t size) {
+void cl_memcpy_d2h_offset(void *dst, const cl_mem mem_src,
+                          const size_t mem_src_offset, const size_t size) {
   cl_int err;
-  err = clEnqueueCopyBuffer(handle->queue, mem_src, mem_dst, 0, 0, size, 0,
-                            NULL, NULL);
+  err = clEnqueueReadBuffer(handle->queue, mem_src, CL_TRUE, mem_src_offset,
+                            size, dst, 0, NULL, NULL);
   assert(err == CL_SUCCESS);
+}
+
+void cl_memcpy_d2d(cl_mem mem_dst, const cl_mem mem_src, const size_t size) {
+  if (mem_dst && size > 0 && mem_src) {
+    cl_int err;
+    err = clEnqueueCopyBuffer(handle->queue, mem_src, mem_dst, 0, 0, size, 0,
+                              NULL, NULL);
+    assert(err == CL_SUCCESS);
+  }
 }
 
 void cl_memset(cl_mem mem_dst, const unsigned int pattern, const size_t offset,

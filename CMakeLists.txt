@@ -75,7 +75,7 @@ cmake_dependent_option( OSQP_COVERAGE_CHECK
                         OSQP_BUILD_UNITTESTS OFF ) # Force off if the unit tests aren't built
 
 set(OSQP_ALGEBRA_BACKEND
-    "builtin"
+    "opencl"
     CACHE STRING "The Algebra to use (builtin/mkl/cuda/opencl)")
 
 option(OSQP_ENABLE_PRINTING "Enable solver printing" ON)

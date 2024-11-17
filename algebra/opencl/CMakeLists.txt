@@ -3,15 +3,17 @@ file(
   SRC_FILES
   CONFIGURE_DEPENDS
   ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/lin_sys/indirect/*.c
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/lin_sys/indirect/*.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/lin_sys/indirect/*.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/lin_sys/indirect/*.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/lin_sys/direct/*.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/lin_sys/direct/*.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/*.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/*.c
   ${CMAKE_CURRENT_SOURCE_DIR}/*.h
   ${CMAKE_CURRENT_SOURCE_DIR}/*.c)
 
 target_sources(OSQPLIB PRIVATE ${SRC_FILES})
-target_include_directories(OSQPLIB PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} include lin_sys/indirect ${OpenCL_INCLUDE_DIRS})
+target_include_directories(OSQPLIB PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} include lin_sys/indirect lin_sys/direct ${OpenCL_INCLUDE_DIRS})
 
 #math(EXPR OPENCL_VALUE "${OpenCL_VERSION_MAJOR} * 100 + ${OpenCL_VERSION_MINOR} * 10" DECIMAL)
 target_compile_definitions(OSQPLIB PRIVATE CL_TARGET_OPENCL_VERSION=120 CL_USE_DEPRECATED_OPENCL_1_2_APIS)
@@ -44,8 +46,8 @@ FOREACH(CL ${CL_SOURCE_FILES})
 	ADD_CUSTOM_COMMAND(
 		OUTPUT ${SPIRV}
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${EXECUTABLE_OUTPUT_PATH}/Shaders/"
-		COMMAND clang -Xclang -finclude-default-header -fmodules -fimplicit-module-maps  -x cl -c -target spir64 -cl-std=CL2.0 -O0  -emit-llvm -o test.bc -o ${BC} ${CL}
-		COMMAND llvm-spirv ${BC} -o ${SPIRV}
+		COMMAND clang --target=spir-unknown-unknown -c -emit-llvm -Xclang -finclude-default-header -Xclang -emit-llvm-bc -Xclang -fdeclare-opencl-builtins -fmodules -fimplicit-module-maps -x cl -cl-std=CL2.0 -O0 -o ${BC} ${CL}
+		COMMAND llvm-spirv --spirv-expand-step --spirv-debug-info-version=ocl-100 ${BC} -o ${SPIRV}
 		DEPENDS ${CL})
 	LIST(APPEND SPIRV_BINARY_FILES ${SPIRV})
 ENDFOREACH(CL)

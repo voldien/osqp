@@ -22,6 +22,8 @@ extern void cl_free(cl_mem mem);
 extern void cl_memcpy_h2d(const cl_mem mem_dst, const void *src,
                           const size_t size);
 extern void cl_memcpy_d2h(void *dst, const cl_mem mem_src, const size_t size);
+extern void cl_memcpy_d2h_offset(void *dst, const cl_mem mem_src, const size_t mem_src_offset, const size_t size);
+
 
 extern void cl_memcpy_d2d(cl_mem mem_dst, const cl_mem mem_src,
                           const size_t size);

@@ -27,26 +27,42 @@ OSQPInt opencl_init(OSQPInt device) {
       calloc(handle->nDevices, sizeof(DeviceInformation));
 
   for (int i = 0; i < handle->nDevices; i++) {
-    clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
-                    sizeof(handle->deviceInformations[i].workgroup),
-                    &handle->deviceInformations[i].workgroup, NULL);
+    cl_int err;
+    /*  Work group - Global. */
+    err =
+        clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS,
+                        sizeof(handle->deviceInformations[i].workDim),
+                        &handle->deviceInformations[i].workDim, NULL);
 
-    clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_WORK_ITEM_SIZES,
-                    sizeof(handle->deviceInformations[i].localworksize),
-                    &handle->deviceInformations[i].localworksize, NULL);
+    err = clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_WORK_GROUP_SIZE,
+                          sizeof(handle->deviceInformations[i].localworksize),
+                          &handle->deviceInformations[i].localworksize, NULL);
 
-    // clGetDeviceInfo(handle->devices[i],
-    // CL_KERNEL_PREFERRED_WORK_GROUP_SIZE_MULTIPLE,
-    //                 sizeof(handle->deviceInformations[i].localworksize),
-    //                 &handle->deviceInformations[i].localworksize, NULL);
-    //
-    clGetDeviceInfo(handle->devices[i], CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE,
-                    sizeof(handle->deviceInformations[i].alignedSize),
-                    &handle->deviceInformations[i].alignedSize, NULL);
+    /*  Work Item - Local   */
+    err = clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_WORK_ITEM_SIZES,
+                          sizeof(handle->deviceInformations[i].work_size),
+                          &handle->deviceInformations[i].work_size, NULL);
 
-    clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_MEM_ALLOC_SIZE,
-                    sizeof(handle->deviceInformations[i].maxMemSize),
-                    &handle->deviceInformations[i].maxMemSize, NULL);
+    /*  Aligned data size.  */
+    err =
+        clGetDeviceInfo(handle->devices[i], CL_DEVICE_MIN_DATA_TYPE_ALIGN_SIZE,
+                        sizeof(handle->deviceInformations[i].alignedSize),
+                        &handle->deviceInformations[i].alignedSize, NULL);
+
+    /*  Aligned data size.  */
+    err = clGetDeviceInfo(handle->devices[i], CL_DEVICE_MEM_BASE_ADDR_ALIGN,
+                          sizeof(handle->deviceInformations[i].alignedSize),
+                          &handle->deviceInformations[i].alignedSize, NULL);
+
+    /*  Max allocation size.  */
+    err = clGetDeviceInfo(handle->devices[i], CL_DEVICE_HOST_UNIFIED_MEMORY,
+                          sizeof(handle->deviceInformations[i].unifiedMemory),
+                          &handle->deviceInformations[i].unifiedMemory, NULL);
+
+    /*  Max allocation size.  */
+    err = clGetDeviceInfo(handle->devices[i], CL_DEVICE_MAX_MEM_ALLOC_SIZE,
+                          sizeof(handle->deviceInformations[i].maxMemSize),
+                          &handle->deviceInformations[i].maxMemSize, NULL);
   }
 
 #define ELEMENTS_PER_THREAD (8)
@@ -76,13 +92,11 @@ OSQPInt opencl_init(OSQPInt device) {
 
   {
 
-
     handle->vec_norm_inf_kernel =
         clCreateKernel(handle->program, "vec_norm_inf_kernel", &err);
 
-
-    handle->vec_sum_kernel =
-        clCreateKernel(handle->program, "vec_sum_kernel", &err);
+    handle->vec_norm_1_kernel =
+        clCreateKernel(handle->program, "vec_norm_1_kernel", &err);
 
     handle->vec_set_sc_kernel =
         clCreateKernel(handle->program, "vec_set_sc_kernel", &err);
@@ -98,7 +112,6 @@ OSQPInt opencl_init(OSQPInt device) {
 
     handle->vec_set_sc_cond_kernel =
         clCreateKernel(handle->program, "vec_set_sc_cond_kernel", &err);
-
 
     handle->vec_prod_kernel =
         clCreateKernel(handle->program, "vec_prod_kernel", &err);
@@ -163,12 +176,35 @@ OSQPInt opencl_init(OSQPInt device) {
     handle->scatter_kernel =
         clCreateKernel(handle->program, "scatter_kernel", &err);
 
+    handle->gather_kernel =
+        clCreateKernel(handle->program, "gather_kernel", &err);
+
     handle->abs_kernel = clCreateKernel(handle->program, "abs_kernel", &err);
 
-    /*  matrix*/
-
+    /*  matrix  */
+    handle->fill_full_matrix_kernel =
+        clCreateKernel(handle->program, "fill_full_matrix_kernel", &err);
+    handle->add_diagonal_kernel =
+        clCreateKernel(handle->program, "add_diagonal_kernel", &err);
+    handle->reduce_permutation_kernel =
+        clCreateKernel(handle->program, "reduce_permutation_kernel", &err);
+    handle->get_diagonal_indices_kernel =
+        clCreateKernel(handle->program, "get_diagonal_indices_kernel", &err);
+    handle->predicate_generator_kernel =
+        clCreateKernel(handle->program, "predicate_generator_kernel", &err);
+    handle->compact = clCreateKernel(handle->program, "compact", &err);
+    handle->compact_rows =
+        clCreateKernel(handle->program, "compact_rows", &err);
+    handle->vector_init_abs_kernel =
+        clCreateKernel(handle->program, "vector_init_abs_kernel", &err);
+    handle->csr_eq_kernel =
+        clCreateKernel(handle->program, "csr_eq_kernel", &err);
     handle->Axpy_mat_kernel =
         clCreateKernel(handle->program, "Axpy_mat_kernel", &err);
+    handle->inclusive_scan_kernel =
+        clCreateKernel(handle->program, "inclusive_scan_kernel", &err);
+    handle->offsets_to_indices_kernel =
+        clCreateKernel(handle->program, "offsets_to_indices_kernel", &err);
   }
 
   return 0;

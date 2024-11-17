@@ -1,7 +1,7 @@
 #include "test_lin_alg.h"
 #include "lin_alg_data.h"
 
-#ifndef OSQP_ALGEBRA_CUDA
+#if !defined(OSQP_ALGEBRA_CUDA) && !defined(OSQP_ALGEBRA_OPENCL)
 
 TEST_CASE("Matrix: Sparse matrix construction", "[matrix][construction]") {
 
